@@ -3,11 +3,9 @@ from scipy.integrate import solve_ivp
 
 
 class system:
-
     """
     制御対象のひな型となるクラスを作る
     """
-
     def __init__(self):
         pass
 
@@ -26,7 +24,7 @@ class system:
             u: float | list | np.ndarray,
     ):
         """
-        指定されたdt分だけ微分方程式を計算し、当たらな状態変数xを求める関数
+        指定されたdt分だけ微分方程式を計算し、新たな状態変数xを求める関数
         """
         u_len = len(u)
         y = np.hstack((x,u))
