@@ -2,6 +2,7 @@ import numpy as np
 from scipy.signal import StateSpace, lsim
 
 
+
 class LTVSystem:
     """
     線形時不変システムクラス
@@ -26,18 +27,24 @@ class LTVSystem:
         """
         t = np.array([0,dt])
         U = np.vstack([u,u])
-        tout, y_next, x_next = lsim(self.sys, U=U, T=t, X0=x, interp=True)
-        return y_next, x_next
+        tout, y_next, x_next = lsim(self.sys, U=U, T=t, X0=x, interp=False)
+        return y_next[-1], x_next[-1]
     
-    def __call__(
+    def solve_sequence(
             self,
-            dt: float,
-            x: float | list | np.ndarray,
-            u: float | list | np.ndarray = None,
-    ) -> np.ndarray:
-        y_next, _ = self.solve_next_state(dt,x,u)
-        return y_next
-    
+            t_sequence: np.ndarray,
+            x0: np.ndarray,
+            us: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+        連続した時刻分計算する
+        """
+        N_seq = len(t_sequence)
+        if N_seq-1 == len(us):
+            us = np.vstack([us,us[-1]])
+        tout, ys, xs = lsim(self.sys, U=us, T=t_sequence, X0=x0, interp=False)
+        return tout, ys, xs
+
 
 
 class springMassDamper1d(LTVSystem):
@@ -54,8 +61,8 @@ class springMassDamper1d(LTVSystem):
                       [-k/m, -c/m]])
         B = np.array([[0.0],
                       [1.0/m]])
-        C = np.array([1, 0])
-        D = np.array([0, 0])
+        C = np.array([1.0, 0.0])
+        D = np.array([0.0, 0.0])
 
         super().__init__(A,B,C,D)
 
