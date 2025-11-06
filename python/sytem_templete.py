@@ -1,34 +1,88 @@
 import numpy as np
-from scipy.integrate import solve_ivp
+from scipy.signal import StateSpace, lsim
 
 
-class system:
+class LTVSystem:
     """
-    制御対象のひな型となるクラスを作る
+    線形時不変システムクラス
     """
-    def __init__(self):
-        pass
-
-    def state_function(self,t,y):
-        """
-        子クラスではここを上書きする
-        ここに状態方程式を書く
-        末尾に入力を持ってくるものとする
-        """
-        pass
+    def __init__(
+            self,
+            A: np.ndarray,
+            B: np.ndarray,
+            C: np.ndarray,
+            D: np.ndarray,
+    ) -> None:
+        self.sys = StateSpace(A,B,C,D)
 
     def solve_next_state(
             self,
             dt: float,
             x: float | list | np.ndarray,
-            u: float | list | np.ndarray,
-    ):
+            u: float | list | np.ndarray = None,
+    ) -> tuple[np.ndarray,np.ndarray]:
         """
-        指定されたdt分だけ微分方程式を計算し、新たな状態変数xを求める関数
+        指定されたdt分だけ微分方程式を計算し、新たな状態変数xとyを求める関数
         """
-        u_len = len(u)
-        y = np.hstack((x,u))
-        sol = solve_ivp(self.state_function,(0,dt),y)
-        y_next = sol.y.T[-1]
-        x_next = y_next[:-u_len]
-        return x_next
+        t = np.array([0,dt])
+        U = np.vstack([u,u])
+        tout, y_next, x_next = lsim(self.sys, U=U, T=t, X0=x, interp=True)
+        return y_next, x_next
+    
+    def __call__(
+            self,
+            dt: float,
+            x: float | list | np.ndarray,
+            u: float | list | np.ndarray = None,
+    ) -> np.ndarray:
+        y_next, _ = self.solve_next_state(dt,x,u)
+        return y_next
+    
+
+
+class springMassDamper1d(LTVSystem):
+    """
+    ばねますダンパ系システム（マスが1個のタイプ）
+    """
+    def __init__(
+            self,
+            m: float,
+            c: float,
+            k: float,
+    ) -> None:
+        A = np.array([[0.0, 1.0],
+                      [-k/m, -c/m]])
+        B = np.array([[0.0],
+                      [1.0/m]])
+        C = np.array([1, 0])
+        D = np.array([0, 0])
+
+        super().__init__(A,B,C,D)
+
+
+
+class springMassDamper2d(LTVSystem):
+    """
+    ばねますダンパ系システム（マスが2個のタイプ）
+    """
+    def __init__(
+            self,
+            m1: float,
+            m2: float,
+            c1: float,
+            c2: float,
+            k1: float,
+            k2: float,
+    ) -> None:
+        A = np.array([[0.0, 1.0, 0.0, 0.0],
+                      [-(k1 + k2)/m1, -(c1 + c2)/m1, k2/m1, c2/m1],
+                      [0.0, 0.0, 0.0, 1.0],
+                      [k2/m2, c2/m2, -k2/m2, -c2/m2]])
+        B = np.array([[0.0, 0.0],
+                      [1.0/m1, 0.0],
+                      [0.0, 0.0],
+                      [0.0,  1.0/m2]])
+        C = np.array([[1.0, 0.0, 0.0, 0.0],
+                      [0.0, 0.0, 1.0, 0.0]])
+        D = np.zeros((2, 2))
+        super().__init__(A,B,C,D)
